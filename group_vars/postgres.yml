@@ -1,0 +1,3 @@
+node_role_label: "role=db"
+patroni_scope: "postgres"
+patroni_etcd_endpoints: "http://10.0.0.41:2379"  # will be templated by role

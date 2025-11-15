@@ -1,0 +1,166 @@
+version: "3.8"
+
+networks:
+  nextcloud_net:
+    driver: overlay
+    attachable: true
+
+configs:
+  nginx_conf:
+    file: ./config/nginx.conf
+
+secrets:
+  db_password:
+    external: true
+  redis_password:
+    external: true
+  s3_secret:
+    external: true
+  s3_key:
+    external: true
+
+services:
+  nginx:
+    image: nginx:stable
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/nginx.conf
+    ports:
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        mode: host
+    networks:
+      - nextcloud_net
+    deploy:
+      mode: replicated
+      replicas: 3
+      placement:
+        constraints: [node.labels.role == worker]
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    volumes:
+      - nextcloud_nginx_cache:/var/cache/nginx
+
+  nextcloud:
+    image: nextcloud:{{ nextcloud_version }}-fpm
+    environment:
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD_FILE=/run/secrets/db_password
+      - MYSQL_HOST=postgres_write
+      - REDIS_HOST=redis
+      - REDIS_HOST_PASSWORD_FILE=/run/secrets/redis_password
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_KEY_FILE=/run/secrets/s3_key
+      - S3_SECRET_FILE=/run/secrets/s3_secret
+      - S3_REGION=${S3_REGION}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - PHP_UPLOAD_MAX_FILESIZE=${PHP_UPLOAD_MAX_FILESIZE}
+      - PHP_POST_MAX_SIZE=${PHP_POST_MAX_SIZE}
+    secrets:
+      - db_password
+      - redis_password
+      - s3_key
+      - s3_secret
+    networks:
+      - nextcloud_net
+    depends_on:
+      - redis
+    deploy:
+      mode: replicated
+      replicas: 6
+      placement:
+        constraints: [node.labels.role == worker]
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 4G
+    volumes:
+      - nextcloud_config:/var/www/html/config
+      - nextcloud_apps:/var/www/html/apps
+      - nextcloud_data_tmp:/tmp
+
+  cron:
+    image: nextcloud:{{ nextcloud_version }}-fpm
+    command: /cron.sh
+    environment:
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD_FILE=/run/secrets/db_password
+      - MYSQL_HOST=postgres_write
+    secrets:
+      - db_password
+    networks:
+      - nextcloud_net
+    deploy:
+      mode: global
+      placement:
+        constraints: [node.labels.role == worker]
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - nextcloud_config:/var/www/html/config
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    configs:
+      - source: redis_conf
+        target: /usr/local/etc/redis/redis.conf
+    networks:
+      - nextcloud_net
+    deploy:
+      mode: global
+      placement:
+        constraints: [node.labels.role == redis]
+      resources:
+        limits:
+          memory: 2G
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
+
+  preview:
+    image: nextcloud:{{ nextcloud_version }}-fpm
+    command: /usr/local/bin/preview-generator
+    environment:
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD_FILE=/run/secrets/db_password
+      - MYSQL_HOST=postgres_write
+    secrets:
+      - db_password
+    networks:
+      - nextcloud_net
+    deploy:
+      mode: replicated
+      replicas: 4
+      placement:
+        constraints: [node.labels.role == worker]
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+
+configs:
+  redis_conf:
+    file: ./config/redis.conf
+
+volumes:
+  nextcloud_config:
+  nextcloud_apps:
+  nextcloud_data_tmp:
+  nextcloud_nginx_cache:
+  redis_data:

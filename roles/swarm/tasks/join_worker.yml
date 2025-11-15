@@ -1,0 +1,7 @@
+---
+- name: Join worker to swarm
+  shell: docker swarm join --token {{ hostvars[groups['managers'][0]].worker_join_token }} {{ hostvars[groups['managers'][0]].ansible_host }}:2377
+  register: join_worker
+  failed_when: false
+  changed_when: "'This node joined a swarm as a worker' in join_worker.stdout"
+

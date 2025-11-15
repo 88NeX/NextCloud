@@ -1,0 +1,48 @@
+global
+    log /dev/log    local0
+    log /dev/log    local1 notice
+    chroot /var/lib/haproxy
+    pidfile /run/haproxy.pid
+    maxconn 40000
+    user haproxy
+    group haproxy
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  redispatch
+    retries 3
+    timeout connect 5s
+    timeout client  50s
+    timeout server  50s
+
+frontend http-in
+    bind *:80
+    redirect scheme https code 301 if !{ ssl_fc }
+
+frontend https-in
+    bind *:443 ssl crt /etc/ssl/private/nextcloud.pem
+    mode http
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    default_backend app-backend
+
+backend app-backend
+    mode http
+    balance leastconn
+    option httpchk GET /status.php
+    {% for host in groups['workers'] %}
+    server {{ host }} {{ hostvars[host].ansible_host }}:8080 check
+    {% endfor %}
+
+listen pgsql
+    bind *:5433
+    mode tcp
+    option tcp-check
+    tcp-check connect
+    {% for host in groups['postgres'] %}
+    server pg{{ loop.index }} {{ hostvars[host].ansible_host }}:5432 check
+    {% endfor %}

@@ -1,0 +1,71 @@
+---
+- name: Install redis-server
+  apt:
+    name: redis-server
+    state: present
+    update_cache: yes
+
+- name: Copy redis.conf
+  template:
+    src: templates/redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: redis
+    group: redis
+    mode: '0644'
+  notify:
+    - restart redis
+
+- name: Copy sentinel.conf
+  template:
+    src: templates/sentinel.conf.j2
+    dest: /etc/redis/sentinel.conf
+    owner: redis
+    group: redis
+    mode: '0644'
+  notify:
+    - restart redis-sentinel
+
+- name: Ensure redis service is running
+  service:
+    name: redis-server
+    state: started
+    enabled: yes
+
+- name: Ensure redis-sentinel service (systemd)
+  copy:
+    dest: /etc/systemd/system/redis-sentinel.service
+    content: |
+      [Unit]
+      Description=Redis Sentinel
+      After=network.target
+
+      [Service]
+      User=redis
+      ExecStart=/usr/bin/redis-server /etc/redis/sentinel.conf --sentinel
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - daemon-reload
+
+- name: Enable and start sentinel
+  systemd:
+    name: redis-sentinel
+    enabled: yes
+    state: started
+
+handlers:
+  - name: restart redis
+    service:
+      name: redis-server
+      state: restarted
+
+  - name: restart redis-sentinel
+    systemd:
+      name: redis-sentinel
+      state: restarted
+
+  - name: daemon-reload
+    systemd:
+      daemon_reload: yes

@@ -1,0 +1,5 @@
+- name: 04_redis - deploy Redis + Sentinel on Redis nodes
+  hosts: redis
+  become: true
+  roles:
+    - redis_cluster

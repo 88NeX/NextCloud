@@ -1,0 +1,32 @@
+---
+- name: Ensure apt cache updated
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install base packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Ensure timezone set
+  ansible.builtin.timezone:
+    name: "{{ timezone }}"
+
+- name: Ensure chrony service
+  service:
+    name: chrony
+    state: started
+    enabled: yes
+
+- name: Disable swap
+  shell: |
+    swapoff -a || true
+    sed -i '/ swap / s/^/#/' /etc/fstab || true
+  args:
+    warn: false
+
+- name: Ensure user docker group exists
+  group:
+    name: docker
+    state: present

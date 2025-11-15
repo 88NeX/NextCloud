@@ -1,0 +1,9 @@
+- name: 01_swarm - initialize and join Docker Swarm
+  hosts: managers[0]
+  become: true
+  roles:
+    - swarm
+  tasks:
+    - name: Wait 10s
+      pause:
+        seconds: 10

@@ -1,0 +1,43 @@
+scope: postgres
+namespace: /service/
+name: {{ inventory_hostname }}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: {{ ansible_host }}:8008
+  auth:
+    username: patroni
+    password: "{{ lookup('env','PATRONI_REST_PASSWORD') | default('changeme_patroni_rest') }}"
+
+etcd:
+  host: http://{{ groups['postgres'][0] }}:2379  # etcd endpoint (simple)
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: {{ ansible_host }}:5432
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/lib/postgresql/{{ postgres_version }}/bin
+  authentication:
+    replication:
+      username: replicator
+      password: "{{ lookup('env','POSTGRES_REPL_PASSWORD') | default('changeme_repl_password') }}"
+    superuser:
+      username: "{{ lookup('env','DB_SUPERUSER') | default('postgres') }}"
+      password: "{{ lookup('env','DB_PASSWORD') | default('changeme_db_password') }}"
+  parameters:
+    max_connections: 300
+    shared_buffers: 8GB
+    work_mem: 64MB
+    maintenance_work_mem: 1GB

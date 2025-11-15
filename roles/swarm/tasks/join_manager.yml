@@ -1,0 +1,6 @@
+---
+- name: Join this node as manager
+  shell: docker swarm join --token {{ hostvars[groups['managers'][0]].manager_join_token }} {{ hostvars[groups['managers'][0]].ansible_host }}:2377
+  register: join_mgr
+  failed_when: false
+  changed_when: "'This node joined a swarm as a manager' in join_mgr.stdout"

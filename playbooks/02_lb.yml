@@ -1,0 +1,5 @@
+- name: 02_lb - deploy HAProxy and Keepalived on LB nodes
+  hosts: lb
+  become: true
+  roles:
+    - haproxy

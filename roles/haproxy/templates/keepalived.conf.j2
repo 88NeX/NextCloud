@@ -1,0 +1,22 @@
+vrrp_script chk_haproxy {
+    script "/usr/bin/pgrep haproxy"
+    interval 2
+    weight 2
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority {{ 150 if inventory_hostname == groups['lb'][0] else 100 }}
+    authentication {
+        auth_type PASS
+        auth_pass changeme_keepalived_pass  # REPLACE: secure password
+    }
+    virtual_ipaddress {
+        10.0.0.30   # VIP - replace with your VIP
+    }
+    track_script {
+        chk_haproxy
+    }
+}

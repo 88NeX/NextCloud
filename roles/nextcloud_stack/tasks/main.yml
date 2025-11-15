@@ -1,0 +1,32 @@
+---
+- name: Create docker secrets from env (if not exists)
+  vars:
+    secrets:
+      - name: db_password
+        value: "{{ lookup('env','DB_PASSWORD') | default('changeme_db_password') }}"
+      - name: redis_password
+        value: "{{ lookup('env','REDIS_PASSWORD') | default('changeme_redis_password') }}"
+      - name: s3_key
+        value: "{{ lookup('env','S3_KEY') | default('changeme_s3_access_key') }}"
+      - name: s3_secret
+        value: "{{ lookup('env','S3_SECRET') | default('changeme_s3_secret_key') }}"
+  block:
+    - name: Ensure docker secret {{ item.name }} exists
+      shell: |
+        echo -n "{{ item.value }}" | docker secret inspect {{ item.name }} >/dev/null 2>&1 || echo -n "{{ item.value }}" | docker secret create {{ item.name }} -
+      loop: "{{ secrets }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+- name: Generate docker-stack.yml from template
+  template:
+    src: templates/docker-stack.yml.j2
+    dest: /tmp/nextcloud-stack.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Deploy stack
+  shell: docker stack deploy -c /tmp/nextcloud-stack.yml nextcloud
+  register: deploy_result
+  failed_when: deploy_result.rc != 0 and "nothing to change" not in deploy_result.stderr

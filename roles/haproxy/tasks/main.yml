@@ -1,0 +1,51 @@
+---
+- name: Install haproxy & keepalived
+  apt:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+    update_cache: yes
+
+- name: Copy haproxy config
+  template:
+    src: templates/haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - restart haproxy
+
+- name: Copy keepalived config
+  template:
+    src: templates/keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - restart keepalived
+
+- name: Ensure haproxy enabled
+  service:
+    name: haproxy
+    enabled: yes
+    state: started
+
+- name: Ensure keepalived enabled
+  service:
+    name: keepalived
+    enabled: yes
+    state: started
+
+handlers:
+  - name: restart haproxy
+    service:
+      name: haproxy
+      state: restarted
+
+  - name: restart keepalived
+    service:
+      name: keepalived
+      state: restarted

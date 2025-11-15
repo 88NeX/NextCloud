@@ -1,0 +1,77 @@
+---
+- name: Install dependencies for Patroni/etcd/postgres
+  apt:
+    name:
+      - git
+      - python3-pip
+      - python3-psycopg2
+      - gcc
+      - make
+      - libpq-dev
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Install patroni (pip)
+  pip:
+    name: patroni[etcd]
+    state: present
+
+- name: Install PostgreSQL {{ postgres_version }} packages (apt)
+  apt:
+    name:
+      - "postgresql-{{ postgres_version }}"
+      - "postgresql-client-{{ postgres_version }}"
+    state: present
+    update_cache: yes
+
+- name: Install etcd (binary)
+  apt:
+    name: etcd
+    state: present
+
+- name: Copy patroni template to /etc/patroni.yml (per host)
+  template:
+    src: templates/patroni.yml.j2
+    dest: /etc/patroni.yml
+    owner: postgres
+    group: postgres
+    mode: '0644'
+
+- name: Create data dir for postgres
+  file:
+    path: /var/lib/postgresql/data
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+
+- name: Ensure patroni service (systemd) file (simple)
+  copy:
+    dest: /etc/systemd/system/patroni.service
+    content: |
+      [Unit]
+      Description=Patroni PostgreSQL cluster member
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=postgres
+      ExecStart=/usr/local/bin/patroni /etc/patroni.yml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: daemon-reload
+
+- name: Enable and start patroni
+  systemd:
+    name: patroni
+    enabled: yes
+    state: started
+
+handlers:
+  - name: daemon-reload
+    systemd:
+      daemon_reload: yes

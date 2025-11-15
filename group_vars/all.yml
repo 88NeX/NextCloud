@@ -1,0 +1,24 @@
+timezone: "Europe/Moscow"
+
+common_packages:
+  - curl
+  - vim
+  - htop
+  - git
+  - net-tools
+  - chrony
+  - ca-certificates
+  - apt-transport-https
+  - gnupg
+  - software-properties-common
+  - unzip
+
+docker_version: "latest"
+docker_users: ["ubuntu", "ansible"]
+
+private_registry: "registry.infra.local"
+
+domain_name: "nextcloud.company.com"
+
+nextcloud_version: "32.0.1"
+postgres_version: "17.6"

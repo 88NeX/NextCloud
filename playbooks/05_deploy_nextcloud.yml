@@ -1,0 +1,5 @@
+- name: 05_deploy_nextcloud - deploy Nextcloud stack on workers
+  hosts: managers
+  become: true
+  roles:
+    - nextcloud_stack
