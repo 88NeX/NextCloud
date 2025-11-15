@@ -93,9 +93,11 @@
 export $(cat .env | xargs)
 
 # запустить playbooks
+```
 ansible-playbook playbooks/00_prepare.yml
 ansible-playbook playbooks/01_swarm.yml
 ansible-playbook playbooks/02_lb.yml
 ansible-playbook playbooks/03_postgres.yml
 ansible-playbook playbooks/04_redis.yml
 ansible-playbook playbooks/05_deploy_nextcloud.yml
+```
