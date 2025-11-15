@@ -13,6 +13,7 @@
 - переместить секреты в Docker Secrets / Vault
 - проверить inventory/hosts.yml и ansible connectivity
 
+## 📁 Структура проекта
 .
 ├── ansible.cfg
 ├── config
