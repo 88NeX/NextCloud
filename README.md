@@ -14,6 +14,7 @@
 - проверить inventory/hosts.yml и ansible connectivity
 
 ## 📁 Структура проекта
+```
 .
 ├── ansible.cfg
 ├── config
@@ -84,7 +85,7 @@
 └── templates
     ├── nextcloud-config.php.j2
     └── patroni-bootstrap.sh
-
+```
 
 Полезные команды для запуска
 
