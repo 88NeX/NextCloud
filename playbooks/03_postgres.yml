@@ -1,5 +1,6 @@
-- name: 03_postgres - deploy Patroni + etcd on Postgres nodes
+- name: 03_postgres - deploy Patroni + etcd on Postgres nodes + pgbouncer
   hosts: postgres
   become: true
   roles:
     - postgresql_ha
+    - pgbouncer

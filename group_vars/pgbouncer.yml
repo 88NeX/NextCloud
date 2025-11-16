@@ -1,0 +1,8 @@
+# group_vars/pgbouncer.yml
+pgbouncer_version: "1.21"
+pgbouncer_listen_port: 6432
+pgbouncer_pool_mode: "transaction"
+pgbouncer_max_client_conn: 1000
+pgbouncer_default_pool_size: 20
+pgbouncer_database_name: "{{ lookup('env','DB_NAME') | default('nextcloud') }}"
+pgbouncer_db_user: "{{ lookup('env','DB_USER') | default('nc_db_user') }}"

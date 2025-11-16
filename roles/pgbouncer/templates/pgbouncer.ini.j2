@@ -1,0 +1,14 @@
+[databases]
+{{ pgbouncer_database_name }} = host=localhost port=5432 auth_user={{ pgbouncer_db_user }}
+
+[pgbouncer]
+listen_port = {{ pgbouncer_listen_port }}
+listen_addr = *
+auth_type = md5
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = {{ pgbouncer_pool_mode }}
+max_client_conn = {{ pgbouncer_max_client_conn }}
+default_pool_size = {{ pgbouncer_default_pool_size }}
+logfile = /var/log/pgbouncer/pgbouncer.log
+pidfile = /run/pgbouncer/pgbouncer.pid
+admin_users = postgres, {{ pgbouncer_db_user }}

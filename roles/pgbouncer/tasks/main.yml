@@ -1,0 +1,29 @@
+- name: Установить PgBouncer
+  apt:
+    name: pgbouncer
+    state: present
+    update_cache: yes
+
+- name: Создать userlist.txt
+  lineinfile:
+    path: /etc/pgbouncer/userlist.txt
+    create: yes
+    owner: pgbouncer
+    group: pgbouncer
+    mode: '0640'
+    line: '"{{ pgbouncer_db_user }}" "{{ lookup("env", "DB_PASSWORD") | default("changeme_db_password") }}"'
+
+- name: Скопировать конфиг PgBouncer
+  template:
+    src: pgbouncer.ini.j2
+    dest: /etc/pgbouncer/pgbouncer.ini
+    owner: pgbouncer
+    group: pgbouncer
+    mode: '0644'
+  notify: restart pgbouncer
+
+- name: Убедиться, что PgBouncer запущен
+  systemd:
+    name: pgbouncer
+    state: started
+    enabled: yes
