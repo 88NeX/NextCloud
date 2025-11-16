@@ -1,0 +1,10 @@
+*.swp
+*.swo
+.DS_Store
+roles/*/files/secrets/*
+roles/*/files/certs/*
+!roles/*/files/secrets/.gitkeep
+!roles/*/files/certs/.gitkeep
+group_vars/*/vault.yml
+host_vars/*/vault.yml
+*.tmp

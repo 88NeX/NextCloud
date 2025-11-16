@@ -5,13 +5,27 @@
     update_cache: yes
 
 - name: Создать userlist.txt
-  lineinfile:
-    path: /etc/pgbouncer/userlist.txt
-    create: yes
-    owner: pgbouncer
-    group: pgbouncer
-    mode: '0640'
-    line: '"{{ pgbouncer_db_user }}" "{{ lookup("env", "DB_PASSWORD") | default("changeme_db_password") }}"'
+  vars:
+    _pg_password: "{{ lookup('env','DB_PASSWORD') | default('changeme_db_password') }}"
+    _pg_user: "{{ pgbouncer_db_user }}"
+  block:
+    - name: Generate md5 password for PgBouncer (Postgres MD5 format)
+      shell: |
+        PW='{{ _pg_password }}'
+        USER='{{ _pg_user }}'
+        # PostgreSQL MD5 password = md5(password + username)
+        HASH=$(printf "%s%s" "$PW" "$USER" | md5sum | awk '{print $1}')
+        echo "\"$USER\" \"md5$HASH\"" > /tmp/pgbouncer_userlist.txt
+      no_log: true
+
+    - name: Move userlist into place with correct ownership
+      copy:
+        src: /tmp/pgbouncer_userlist.txt
+        dest: /etc/pgbouncer/userlist.txt
+        owner: pgbouncer
+        group: pgbouncer
+        mode: '0640'
+      notify: restart pgbouncer
 
 - name: Скопировать конфиг PgBouncer
   template:

@@ -38,11 +38,12 @@ backend app-backend
     server {{ host }} {{ hostvars[host].ansible_host }}:8080 check
     {% endfor %}
 
-listen pgsql
-    bind *:5433
+listen pgbouncer
+    bind *:6432
     mode tcp
     option tcp-check
     tcp-check connect
+    # Balance connections to PgBouncer instances running on postgres hosts
     {% for host in groups['postgres'] %}
-    server pg{{ loop.index }} {{ hostvars[host].ansible_host }}:5432 check
+    server pgb{{ loop.index }} {{ hostvars[host].ansible_host }}:{{ pgbouncer_listen_port | default(6432) }} check
     {% endfor %}

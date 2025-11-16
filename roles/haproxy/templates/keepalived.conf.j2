@@ -5,16 +5,18 @@ vrrp_script chk_haproxy {
 }
 
 vrrp_instance VI_1 {
-    state MASTER
-    interface eth0
-    virtual_router_id 51
-    priority {{ 150 if inventory_hostname == groups['lb'][0] else 100 }}
+    state {{ keepalived_state | default('MASTER') }}
+    interface {{ keepalived_interface | default('eth0') }}
+    virtual_router_id {{ keepalived_virtual_router_id | default(51) }}
+    priority {{ keepalived_priority_master if inventory_hostname == groups['lb'][0] else keepalived_priority_backup }}
     authentication {
         auth_type PASS
-        auth_pass changeme_keepalived_pass  # REPLACE: secure password
+        auth_pass {{ keepalived_auth_pass | default('changeme_keepalived_pass') }}  # REPLACE: secure password (use Vault)
     }
     virtual_ipaddress {
-        10.0.0.30   # VIP - replace with your VIP
+        {%- for ip in keepalived_virtual_ipaddress | default(["10.0.0.30"]) %}
+        {{ ip }}
+        {%- endfor %}
     }
     track_script {
         chk_haproxy

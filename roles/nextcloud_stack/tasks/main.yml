@@ -12,11 +12,12 @@
         value: "{{ lookup('env','S3_SECRET') | default('changeme_s3_secret_key') }}"
   block:
     - name: Ensure docker secret {{ item.name }} exists
-      shell: |
-        echo -n "{{ item.value }}" | docker secret inspect {{ item.name }} >/dev/null 2>&1 || echo -n "{{ item.value }}" | docker secret create {{ item.name }} -
+      community.docker.docker_secret:
+        name: "{{ item.name }}"
+        state: present
+        secret: "{{ item.value }}"
       loop: "{{ secrets }}"
-      loop_control:
-        label: "{{ item.name }}"
+      no_log: true
 
 - name: Generate docker-stack.yml from template
   template:

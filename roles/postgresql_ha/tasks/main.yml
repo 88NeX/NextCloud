@@ -29,6 +29,17 @@
   apt:
     name: etcd
     state: present
+    update_cache: yes
+
+- name: Configure etcd environment for cluster
+  template:
+    src: templates/etcd.env.j2
+    dest: /etc/default/etcd
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - restart etcd
 
 - name: Copy patroni template to /etc/patroni.yml (per host)
   template:
@@ -71,7 +82,3 @@
     enabled: yes
     state: started
 
-handlers:
-  - name: daemon-reload
-    systemd:
-      daemon_reload: yes

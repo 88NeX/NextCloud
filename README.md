@@ -233,3 +233,12 @@ Monitoring: Prometheus + Grafana + экспортеры (PostgreSQL, Redis, HAPr
 
 ## ☁️ Внешние зависимости
 S3: все файлы Nextcloud хранятся во внешнем S3-совместимом бакете (никакого локального data/).
+
+Prerequisites (Ansible)
+ - Install required Ansible collections:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+The project uses the `community.docker` collection for Docker-related tasks (secrets, etc.).

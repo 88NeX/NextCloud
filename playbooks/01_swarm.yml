@@ -1,6 +1,16 @@
-- name: 01_swarm - initialize and join Docker Swarm
+---
+- name: Initialize Docker Swarm
   hosts: managers[0]
-  become: true
+  roles:
+    - swarm
+
+- name: Join managers to swarm
+  hosts: managers[1:]
+  roles:
+    - swarm
+
+- name: Join workers to swarm
+  hosts: workers
   roles:
     - swarm
   tasks:
