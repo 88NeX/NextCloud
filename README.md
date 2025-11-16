@@ -105,7 +105,7 @@ ansible-playbook playbooks/05_deploy_nextcloud.yml
 ```mermaid
 flowchart TD
     subgraph External
-        S3["External S3 Bucket\n(nex88.ru)"]
+        S3["External S3 Bucket\n(cloud.ru)"]
     end
 
     Client["Client\n(User/Browser)"] -->|HTTPS| VIP["Virtual IP\n192.168.10.100\n(Keepalived VRRP)"]
@@ -197,8 +197,8 @@ flowchart TD
     C1 -.->|Runs on one worker| Edge_and_Workers
 
     %% Примечание
-    classDef master fill:#d1e7dd,stroke:#000;
-    classDef backup fill:#f8d7da,stroke:#000;
+    classDef master fill:#11650c,stroke:#000;
+    classDef backup fill:#650c14,stroke:#000;
     class K4 master
     class K5,K6 backup
 ```
