@@ -101,3 +101,104 @@ ansible-playbook playbooks/03_postgres.yml
 ansible-playbook playbooks/04_redis.yml
 ansible-playbook playbooks/05_deploy_nextcloud.yml
 ```
+
+```mermaid
+flowchart TD
+    subgraph External
+        S3["External S3 Bucket\n(nex88.ru)"]
+    end
+
+    Client["Client\n(User/Browser)"] -->|HTTPS| VIP["Virtual IP\n192.168.10.100\n(Keepalived VRRP)"]
+
+    subgraph Edge_and_Workers["Nextcloud Workers + Edge (srv4–srv6)"]
+        direction TB
+
+        subgraph srv4["srv4 (Worker #1)"]
+            K4["Keepalived\n(MASTER)"] 
+            H4["HAProxy"]
+            N4["nginx"]
+            F4["nextcloud-fpm"]
+        end
+
+        subgraph srv5["srv5 (Worker #2)"]
+            K5["Keepalived\n(BACKUP)"]
+            H5["HAProxy"]
+            N5["nginx"]
+            F5["nextcloud-fpm"]
+        end
+
+        subgraph srv6["srv6 (Worker #3)"]
+            K6["Keepalived\n(BACKUP)"]
+            H6["HAProxy"]
+            N6["nginx"]
+            F6["nextcloud-fpm"]
+        end
+
+        %% VRRP между Keepalived
+        K4 <-->|VRRP multicast| K5
+        K5 <-->|VRRP multicast| K6
+
+        %% HAProxy балансирует между всеми
+        H4 <-->|HTTP/HTTPS| H5
+        H5 <-->|HTTP/HTTPS| H6
+
+        %% Внутри каждой ноды
+        H4 --> N4 --> F4
+        H5 --> N5 --> F5
+        H6 --> N6 --> F6
+    end
+
+    VIP --> K4
+
+    subgraph Stateful["Stateful Nodes (srv1–srv3)"]
+        direction TB
+
+        subgraph srv1["srv1"]
+            E1["etcd1"]
+            P1["PostgreSQL\n(MASTER*)"]
+            R1a["Redis M1"]
+            R1b["Redis S2"]
+        end
+
+        subgraph srv2["srv2"]
+            E2["etcd2"]
+            P2["PostgreSQL\n(REPLICA)"]
+            R2a["Redis M2"]
+            R2b["Redis S3"]
+        end
+
+        subgraph srv3["srv3"]
+            E3["etcd3"]
+            P3["PostgreSQL\n(REPLICA)"]
+            R3a["Redis M3"]
+            R3b["Redis S1"]
+        end
+    end
+
+    subgraph Cron["Background"]
+        C1["Cron\n(in Swarm)"]
+    end
+
+    %% Nextcloud → Stateful
+    F4 -->|SQL| P1
+    F4 -->|Redis| R1a
+    F4 -->|S3 API| S3
+
+    F5 -->|SQL| P2
+    F5 -->|Redis| R2a
+    F5 -->|S3 API| S3
+
+    F6 -->|SQL| P3
+    F6 -->|Redis| R3a
+    F6 -->|S3 API| S3
+
+    %% Cron
+    C1 -->|SQL, S3, Redis| Stateful
+    C1 -.->|Runs on one worker| Edge_and_Workers
+
+    %% Примечание
+    classDef master fill:#d1e7dd,stroke:#000;
+    classDef backup fill:#f8d7da,stroke:#000;
+    class K4 master
+    class K5,K6 backup
+```
