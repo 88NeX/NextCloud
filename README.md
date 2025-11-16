@@ -15,6 +15,7 @@
 
 ## 📁 Структура проекта
 ```
+отрисуй актуальную на данный момент схему (15 серверов) в соответствии с деревом
 .
 ├── ansible.cfg
 ├── config
@@ -27,15 +28,15 @@
 │   ├── all.yml
 │   ├── lb.yml
 │   ├── managers.yml
+│   ├── pgbouncer.yml
 │   ├── postgres.yml
 │   ├── redis.yml
 │   └── workers.yml
-├── haproxy.cfg
-├── haproxy.cfg.gefault
+├── haproxy.cfg.bak
 ├── inventory
 │   └── hosts.yml
 ├── keepalived.conf
-├── keepalived.conf.gefault
+├── keepalived.conf.default
 ├── playbooks
 │   ├── 00_prepare.yml
 │   ├── 01_swarm.yml
@@ -44,6 +45,7 @@
 │   ├── 04_redis.yml
 │   └── 05_deploy_nextcloud.yml
 ├── README.md
+├── requirements.yml
 ├── roles
 │   ├── common
 │   │   └── tasks
@@ -66,10 +68,20 @@
 │   │   └── templates
 │   │       ├── docker-stack.yml.j2
 │   │       └── env.j2
-│   ├── postgresql_ha
+│   ├── pgbouncer
+│   │   ├── handlers
+│   │   │   └── main.yml
 │   │   ├── tasks
 │   │   │   └── main.yml
 │   │   └── templates
+│   │       └── pgbouncer.ini.j2
+│   ├── postgresql_ha
+│   │   ├── handlers
+│   │   │   └── main.yml
+│   │   ├── tasks
+│   │   │   └── main.yml
+│   │   └── templates
+│   │       ├── etcd.env.j2
 │   │       └── patroni.yml.j2
 │   ├── redis_cluster
 │   │   ├── tasks
@@ -81,7 +93,8 @@
 │       └── tasks
 │           ├── init.yml
 │           ├── join_manager.yml
-│           └── join_worker.yml
+│           ├── join_worker.yml
+│           └── main.yml
 └── templates
     ├── nextcloud-config.php.j2
     └── patroni-bootstrap.sh
@@ -121,35 +134,38 @@ flowchart TB
 
     subgraph Workers["Workers (3)"]
         direction LR
-        W12["srv12"]
-        W13["srv13"]
-        W14["srv14"]
+        W3["srv3\nNC+nginx+preview"]
+        W4["srv4\nNC+nginx+preview"]
+        W5["srv5\nNC+nginx+preview"]
     end
 
-    H1 --> W12
-    H1 --> W13
-    H1 --> W14
-    H2 --> W12
-    H2 --> W13
-    H2 --> W14
+    H1 --> W3
+    H1 --> W4
+    H1 --> W5
+    H2 --> W3
+    H2 --> W4
+    H2 --> W5
 
     subgraph PostgreSQL["PostgreSQL + etcd (3)"]
         direction LR
-        PG6["srv6\nPG M*"]
-        PG7["srv7\nPG S"]
-        PG8["srv8\nPG S"]
+        PB6["srv6\nPgBouncer"]
+        PB7["srv7\nPgBouncer"]
+        PB8["srv8\nPgBouncer"]
+        PG6["PG M*"]
+        PG7["PG S"]
+        PG8["PG S"]
         E6["etcd"]
         E7["etcd"]
         E8["etcd"]
 
-        PG6 --> E6
-        PG7 --> E7
-        PG8 --> E8
+        PB6 --> PG6 --> E6
+        PB7 --> PG7 --> E7
+        PB8 --> PG8 --> E8
     end
 
-    W12 --> PG6
-    W13 --> PG7
-    W14 --> PG8
+    W3 --> PB6
+    W4 --> PB7
+    W5 --> PB8
 
     subgraph Redis["Redis Cluster (3)"]
         direction LR
@@ -165,29 +181,29 @@ flowchart TB
         R11 --> R9r
     end
 
-    W12 --> R9
-    W13 --> R10
-    W14 --> R11
+    W3 --> R9
+    W4 --> R10
+    W5 --> R11
 
     subgraph External["External"]
         S3["S3"]
     end
 
-    W12 --> S3
-    W13 --> S3
-    W14 --> S3
+    W3 --> S3
+    W4 --> S3
+    W5 --> S3
 
     subgraph ControlPlane["Swarm Managers (3)"]
         direction LR
-        M3["srv3\nMGR"]
-        M4["srv4\nMGR"]
-        M5["srv5\nMGR"]
-        M3 --> M4 --> M5
+        M12["srv12\nMGR"]
+        M13["srv13\nMGR"]
+        M14["srv14\nMGR"]
+        M12 --> M13 --> M14
     end
 
-    M3 -.-> W12
-    M4 -.-> W13
-    M5 -.-> W14
+    M12 -.-> W3
+    M13 -.-> W4
+    M14 -.-> W5
 
     subgraph Utility["Utility (1)"]
         U15["srv15\nCron+Mon"]
@@ -196,7 +212,7 @@ flowchart TB
     U15 --> PG6
     U15 --> R9
     U15 --> H1
-    U15 --> W12
+    U15 --> W3
     U15 --> S3
 ```
 
