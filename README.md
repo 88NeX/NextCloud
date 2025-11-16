@@ -103,102 +103,99 @@ ansible-playbook playbooks/05_deploy_nextcloud.yml
 ```
 
 ```mermaid
-flowchart TD
-    subgraph External
-        S3["External S3 Bucket\n(cloud.ru)"]
+flowchart TB
+    classDef vip fill:#0d6efd,stroke:#000,color:#fff;
+    classDef master fill:#11650c,stroke:#000,color:#fff;
+    classDef backup fill:#650c14,stroke:#000,color:#fff;
+
+    Client["Client"] --> VIP:::vip
+
+    subgraph Edge["Edge (2)"]
+        direction LR
+        K1["srv1\nKeepalived"]:::master --> H1["HAProxy"]
+        K2["srv2\nKeepalived"]:::backup --> H2["HAProxy"]
     end
 
-    Client["Client\n(User/Browser)"] -->|HTTPS| VIP["Virtual IP\n192.168.10.100\n(Keepalived VRRP)"]
+    VIP --> K1
+    VIP --> K2
 
-    subgraph Edge_and_Workers["Nextcloud Workers + Edge (srv4–srv6)"]
-        direction TB
-
-        subgraph srv4["srv4 (Worker #1)"]
-            K4["Keepalived\n(MASTER)"] 
-            H4["HAProxy"]
-            N4["nginx"]
-            F4["nextcloud-fpm"]
-        end
-
-        subgraph srv5["srv5 (Worker #2)"]
-            K5["Keepalived\n(BACKUP)"]
-            H5["HAProxy"]
-            N5["nginx"]
-            F5["nextcloud-fpm"]
-        end
-
-        subgraph srv6["srv6 (Worker #3)"]
-            K6["Keepalived\n(BACKUP)"]
-            H6["HAProxy"]
-            N6["nginx"]
-            F6["nextcloud-fpm"]
-        end
-
-        %% VRRP между Keepalived
-        K4 <-->|VRRP multicast| K5
-        K5 <-->|VRRP multicast| K6
-
-        %% HAProxy балансирует между всеми
-        H4 <-->|HTTP/HTTPS| H5
-        H5 <-->|HTTP/HTTPS| H6
-
-        %% Внутри каждой ноды
-        H4 --> N4 --> F4
-        H5 --> N5 --> F5
-        H6 --> N6 --> F6
+    subgraph Workers["Workers (3)"]
+        direction LR
+        W12["srv12"]
+        W13["srv13"]
+        W14["srv14"]
     end
 
-    VIP --> K4
+    H1 --> W12
+    H1 --> W13
+    H1 --> W14
+    H2 --> W12
+    H2 --> W13
+    H2 --> W14
 
-    subgraph Stateful["Stateful Nodes (srv1–srv3)"]
-        direction TB
+    subgraph PostgreSQL["PostgreSQL + etcd (3)"]
+        direction LR
+        PG6["srv6\nPG M*"]
+        PG7["srv7\nPG S"]
+        PG8["srv8\nPG S"]
+        E6["etcd"]
+        E7["etcd"]
+        E8["etcd"]
 
-        subgraph srv1["srv1"]
-            E1["etcd1"]
-            P1["PostgreSQL\n(MASTER*)"]
-            R1a["Redis M1"]
-            R1b["Redis S2"]
-        end
-
-        subgraph srv2["srv2"]
-            E2["etcd2"]
-            P2["PostgreSQL\n(REPLICA)"]
-            R2a["Redis M2"]
-            R2b["Redis S3"]
-        end
-
-        subgraph srv3["srv3"]
-            E3["etcd3"]
-            P3["PostgreSQL\n(REPLICA)"]
-            R3a["Redis M3"]
-            R3b["Redis S1"]
-        end
+        PG6 --> E6
+        PG7 --> E7
+        PG8 --> E8
     end
 
-    subgraph Cron["Background"]
-        C1["Cron\n(in Swarm)"]
+    W12 --> PG6
+    W13 --> PG7
+    W14 --> PG8
+
+    subgraph Redis["Redis Cluster (3)"]
+        direction LR
+        R9["srv9\nR M1"]
+        R10["srv10\nR M2"]
+        R11["srv11\nR M3"]
+        R10r["R S2"]
+        R11r["R S3"]
+        R9r["R S1"]
+
+        R9 --> R10r
+        R10 --> R11r
+        R11 --> R9r
     end
 
-    %% Nextcloud → Stateful
-    F4 -->|SQL| P1
-    F4 -->|Redis| R1a
-    F4 -->|S3 API| S3
+    W12 --> R9
+    W13 --> R10
+    W14 --> R11
 
-    F5 -->|SQL| P2
-    F5 -->|Redis| R2a
-    F5 -->|S3 API| S3
+    subgraph External["External"]
+        S3["S3"]
+    end
 
-    F6 -->|SQL| P3
-    F6 -->|Redis| R3a
-    F6 -->|S3 API| S3
+    W12 --> S3
+    W13 --> S3
+    W14 --> S3
 
-    %% Cron
-    C1 -->|SQL, S3, Redis| Stateful
-    C1 -.->|Runs on one worker| Edge_and_Workers
+    subgraph ControlPlane["Swarm Managers (3)"]
+        direction LR
+        M3["srv3\nMGR"]
+        M4["srv4\nMGR"]
+        M5["srv5\nMGR"]
+        M3 --> M4 --> M5
+    end
 
-    %% Примечание
-    classDef master fill:#11650c,stroke:#000;
-    classDef backup fill:#650c14,stroke:#000;
-    class K4 master
-    class K5,K6 backup
+    M3 -.-> W12
+    M4 -.-> W13
+    M5 -.-> W14
+
+    subgraph Utility["Utility (1)"]
+        U15["srv15\nCron+Mon"]
+    end
+
+    U15 --> PG6
+    U15 --> R9
+    U15 --> H1
+    U15 --> W12
+    U15 --> S3
 ```
