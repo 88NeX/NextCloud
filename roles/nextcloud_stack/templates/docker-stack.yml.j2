@@ -8,6 +8,8 @@ networks:
 configs:
   nginx_conf:
     file: ./config/nginx.conf
+  redis_conf:
+    file: ./config/redis.conf
 
 secrets:
   db_password:
@@ -154,10 +156,6 @@ services:
         limits:
           cpus: '1.0'
           memory: 2G
-
-configs:
-  redis_conf:
-    file: ./config/redis.conf
 
 volumes:
   nextcloud_config:

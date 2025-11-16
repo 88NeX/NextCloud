@@ -1,0 +1,9 @@
+---
+- name: swarm: import init and join tasks
+  import_tasks: init.yml
+
+- name: swarm: import join manager task
+  import_tasks: join_manager.yml
+
+- name: swarm: import join worker task
+  import_tasks: join_worker.yml
